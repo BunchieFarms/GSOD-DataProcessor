@@ -1,21 +1,21 @@
-﻿using GSOD_DataProcessor;
+﻿using GSOD_DataProcessor.Business;
 using GSOD_DataProcessor.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace GSODDataProcessor
 {
     public class Program
     {
-        private static weatheredContext _weatheredContext;
         public static void Main()
         {
-            var services = new ServiceCollection();
-            services.AddDbContext<weatheredContext>(options => options.UseNpgsql("DBConn"));
-            var serviceProvider = services.BuildServiceProvider();
-            _weatheredContext = serviceProvider.GetService<weatheredContext>();
-            DataProcessor dataProcessor = new DataProcessor(_weatheredContext);
-            dataProcessor.Start();
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile($"appsettings.json", false);
+            var config = configuration.Build();
+
+            AppSettings.SetConfig(config);
+
+            DataProcessor.Start();
         }
     }
 }

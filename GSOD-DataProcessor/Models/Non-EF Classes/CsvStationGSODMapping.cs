@@ -1,5 +1,4 @@
-﻿using GSODDataProcessor;
-using TinyCsvParser.Mapping;
+﻿using TinyCsvParser.Mapping;
 
 namespace GSOD_DataProcessor.Models
 {
