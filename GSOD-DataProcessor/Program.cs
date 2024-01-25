@@ -6,7 +6,7 @@ namespace GSODDataProcessor
 {
     public class Program
     {
-        public static void Main()
+        public static async Task Main()
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -15,7 +15,7 @@ namespace GSODDataProcessor
 
             AppSettings.SetConfig(config);
 
-            DataProcessor.Start();
+            await DataProcessor.Start();
         }
     }
 }

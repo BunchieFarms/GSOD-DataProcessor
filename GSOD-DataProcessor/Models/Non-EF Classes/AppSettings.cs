@@ -4,8 +4,10 @@ namespace GSOD_DataProcessor.Models
 {
     public static class AppSettings
     {
-        public static string? weatheredDbString;
-        public static string? noaaGsodUri;
+        private static string? weatheredDbString = "";
+        private static string? noaaGsodUri = "";
+        public static string WeatheredDbString { get => weatheredDbString; }
+        public static string NoaaGsodUri { get => noaaGsodUri; }
         public static void SetConfig(IConfiguration config)
         {
             weatheredDbString = config.GetConnectionString("weatheredDbString");

@@ -7,11 +7,12 @@ namespace GSOD_DataProcessor.Business
     {
         public static bool CheckNoaaSiteIfUpdateAvailable()
         {
+            Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Start");
             bool retVal = true;
             using (var context = new weatheredContext())
             {
                 var currentYear = DateTime.Now.Year.ToString();
-                var html = AppSettings.noaaGsodUri;
+                var html = AppSettings.NoaaGsodUri;
                 HtmlWeb web = new HtmlWeb();
                 var htmlDoc = web.Load(html);
                 var node = htmlDoc.DocumentNode.SelectSingleNode("//table");
@@ -22,12 +23,19 @@ namespace GSOD_DataProcessor.Business
                     NoaaArchiveUpdate noaaArchiveUpdate = new NoaaArchiveUpdate { Filename = currentYear, Lastsiteupdate = currentYearUpdateDate.LastModified };
                     context.NoaaArchiveUpdates.Add(noaaArchiveUpdate);
                     context.SaveChanges();
+                    Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Added New Archive Entry to DB");
                     return false;
                 }
                 if (currentYearUpdateDate.LastModified <= context.NoaaArchiveUpdates.First(x => x.Filename == currentYear).Lastsiteupdate)
+                {
+                    Logging.Log("CheckNoaaSiteIfUpdateAvailable", "No Update Available");
                     return false;
+                }
+                
                 context.NoaaArchiveUpdates.First(x => x.Filename == currentYear).Lastsiteupdate = currentYearUpdateDate.LastModified;
+                context.SaveChanges();
                 NoaaArchive.SetNewestArchiveFileName(currentYearUpdateDate.Name!);
+                Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Update Is Available");
             }
             return retVal;
         }

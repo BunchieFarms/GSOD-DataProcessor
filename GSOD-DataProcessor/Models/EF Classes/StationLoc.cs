@@ -48,8 +48,8 @@ public partial class StationLoc
             }
         }
 
-        float[] temps = { 9999.9F, 9999.9F, 9999.9F, 9999.9F, 9999.9F, 9999.9F };
-        float[] prcps = { 99.99F, 99.99F, 99.99F, 99.99F, 99.99F, 99.99F };
+        float[] temps = { 9999.9F, 9999.9F, 9999.9F, 9999.9F, 9999.9F, 9999.9F, 9999.9F };
+        float[] prcps = { 99.99F, 99.99F, 99.99F, 99.99F, 99.99F, 99.99F, 99.99F };
 
         for (int i = 0; i < result.Count(); i++)
         {
