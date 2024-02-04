@@ -27,7 +27,7 @@ namespace GSOD_DataProcessor.Business
 
         public static async Task GetNewestGSOD()
         {
-            Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Start");
+            Logging.Log("GetNewestGSOD", "Start");
             try
             {
                 using var client = new HttpClient();
