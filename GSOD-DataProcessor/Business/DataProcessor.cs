@@ -73,7 +73,7 @@ namespace GSOD_DataProcessor.Business
                 CsvParserOptions csvParserOptions = new CsvParserOptions(true, ',');
                 CsvStationGSODMapping csvMapper = new CsvStationGSODMapping();
                 CsvParser<StationGSOD> csvParser = new CsvParser<StationGSOD>(csvParserOptions, csvMapper);
-                DateTime startDate = DateTime.Now.AddDays(-7);
+                DateTime startDate = DateTime.Now.AddDays(-8);
 
                 var files = Directory.EnumerateFiles(NoaaArchive.UncompressedFolderName, "*.csv");
 
