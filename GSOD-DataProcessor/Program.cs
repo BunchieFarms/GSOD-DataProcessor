@@ -2,20 +2,19 @@
 using GSOD_DataProcessor.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace GSODDataProcessor
+namespace GSODDataProcessor;
+
+public class Program
 {
-    public class Program
+    public static async Task Main()
     {
-        public static async Task Main()
-        {
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile($"appsettings.json", false);
-            var config = configuration.Build();
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile($"appsettings.json", false);
+        var config = configuration.Build();
 
-            AppSettings.SetConfig(config);
+        AppSettings.SetConfig(config);
 
-            await DataProcessor.Start();
-        }
+        await DataProcessor.Start();
     }
 }
