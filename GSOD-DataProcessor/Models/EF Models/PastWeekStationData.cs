@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using GSOD_DataProcessor.Extensions;
+using MongoDB.Bson;
 
 namespace GSOD_DataProcessor.Models;
 
@@ -9,13 +10,9 @@ public class PastWeekStationData
     public string? StationName { get; set; }
     public string Region { get; set; } = "";
     public string Country { get; set; } = "";
-    // TODO: Convert all floats to lower precision
-    public float Latitude { get; set; }
-    // TODO: Convert all floats to lower precision
-    public float Longitude { get; set; }
-    // TODO: Convert all floats to lower precision
-    public float Elevation { get; set; }
-    // TODO: LastUpdate is going into the db as the Minimum Date
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public double Elevation { get; set; }
     public DateTime LastUpdate { get; set; }
     public List<PastWeekData> PastWeekData { get; set; } = new();
 
@@ -46,9 +43,9 @@ public class PastWeekStationData
         }
 
         foreach (StationGSOD day in station)
-        {
             PastWeekData.Add(new PastWeekData(day));
-        }
+
+        LastUpdate = station.Select(x => x.Date).Max();
     }
 }
 
@@ -73,31 +70,29 @@ public class PastWeekData
     public PastWeekData(StationGSOD day)
     {
         Date = day.Date;
-        Temp_Mean = new DataItems(day.Temp_Mean, day.Temp_Mean_Attribute);
-        Temp_Max = new DataItems(day.Temp_Max, day.Temp_Max_Attribute);
-        Temp_Min = new DataItems(day.Temp_Min, day.Temp_Min_Attribute);
-        SeaLevelPress_Mean = new DataItems(day.SeaLevelPress_Mean, day.SeaLevelPress_Mean_Attribute);
-        StationPress_Mean = new DataItems(day.StationPress_Mean, day.StationPress_Mean_Attribute);
-        Visi_Mean = new DataItems(day.Visi_Mean, day.Visi_Mean_Attribute);
-        Dewp_Mean = new DataItems(day.Dewp_Mean, day.Dewp_Mean_Attribute);
-        WndSpd_Mean = new DataItems(day.WndSpd_Mean, day.WndSpd_Mean_Attribute);
-        WndSpd_Max = new DataItems(day.WndSpd_Max);
-        WndSpd_Gust = new DataItems(day.WndSpd_Gust);
-        Precip_Total = new DataItems(day.Precip_Total, day.Precip_Total_Attribute);
-        Snow_Depth = new DataItems(day.Snow_Depth);
+        Temp_Mean = new DataItems(day.Temp_Mean.ConvertMissing(), day.Temp_Mean_Attribute);
+        Temp_Max = new DataItems(day.Temp_Max.ConvertMissing(), day.Temp_Max_Attribute);
+        Temp_Min = new DataItems(day.Temp_Min.ConvertMissing(), day.Temp_Min_Attribute);
+        SeaLevelPress_Mean = new DataItems(day.SeaLevelPress_Mean.ConvertMissing(), day.SeaLevelPress_Mean_Attribute);
+        StationPress_Mean = new DataItems(day.StationPress_Mean.ConvertMissing(), day.StationPress_Mean_Attribute);
+        Visi_Mean = new DataItems(day.Visi_Mean.ConvertMissing(), day.Visi_Mean_Attribute);
+        Dewp_Mean = new DataItems(day.Dewp_Mean.ConvertMissing(), day.Dewp_Mean_Attribute);
+        WndSpd_Mean = new DataItems(day.WndSpd_Mean.ConvertMissing(), day.WndSpd_Mean_Attribute);
+        WndSpd_Max = new DataItems(day.WndSpd_Max.ConvertMissing());
+        WndSpd_Gust = new DataItems(day.WndSpd_Gust.ConvertMissing());
+        Precip_Total = new DataItems(day.Precip_Total.ConvertMissing(), day.Precip_Total_Attribute);
+        Snow_Depth = new DataItems(day.Snow_Depth.ConvertMissing());
     }
 }
 
 public class DataItems
 {
-    // TODO: Convert all floats to lower precision
-    public float Value { get; set; }
+    public double Value { get; set; }
     public string? Attribute { get; set; }
     public DataItems() { }
-    public DataItems(float value, string attribute = "")
+    public DataItems(double value, string attribute = "")
     {
         Value = value;
         Attribute = attribute;
     }
-    // TODO: Convert Missing values (99.99 and similar) to 0
 }
