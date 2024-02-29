@@ -1,5 +1,5 @@
 ﻿using GSOD_DataProcessor.Business;
-using GSOD_DataProcessor.Models;
+using GSOD_DataProcessor.Shared;
 using Microsoft.Extensions.Configuration;
 
 namespace GSODDataProcessor;

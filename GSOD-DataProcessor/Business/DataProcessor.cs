@@ -1,7 +1,7 @@
 ﻿using GSOD_DataProcessor.Models;
+using GSOD_DataProcessor.Shared;
 using ICSharpCode.SharpZipLib.GZip;
 using ICSharpCode.SharpZipLib.Tar;
-using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using System.Text;
 using TinyCsvParser;
@@ -13,7 +13,8 @@ public class DataProcessor
     public static async Task Start()
     {
         Logging.Log("GSOD Data Processor", "Start");
-        if (!NoaaSiteParsing.CheckNoaaSiteIfUpdateAvailable())
+        bool updateAvailable = await NoaaSiteParsing.CheckNoaaSiteIfUpdateAvailable();
+        if (!updateAvailable)
         {
             Logging.Log("GSOD Data Processor", "End", true);
             return;
@@ -106,45 +107,43 @@ public class DataProcessor
     // TODO: MEMORY HOOOOOG
     public static void GetOutOfDateStations()
     {
+        var _stationCollection = MongoBase.WeatheredDB.GetCollection<PastWeekStationData>(Constants.PastWeekStationData);
         Logging.Log("GetOutOfDateStations", "Start");
         try
         {
-            var dbContextOptions =
-                new DbContextOptionsBuilder<WeatheredContext>()
-                .UseMongoDB(new MongoClient(AppSettings.WeatheredDbString), AppSettings.WeatheredDbName);
-            using (var context = new WeatheredContext(dbContextOptions.Options))
+            //var dbStationLocs = context.PastWeekStationData;
+            long collectionCount = _stationCollection.CountDocuments(Builders<PastWeekStationData>.Filter.Empty);
+            if (collectionCount == 0)
             {
-                // TODO: Maybe revisit this...
-                //context.PastWeekStationData.Load();
-                var dbStationLocs = context.PastWeekStationData;//.Local;
-                if (dbStationLocs.Count() == 0)
-                {
-                    context.PastWeekStationData.AddRange(StationList.Stations);
-                    context.SaveChanges();
-                    Logging.Log("GetOutOfDateStations", "All Downloaded Station Data Inserted Into DB, was previously empty");
-                    return;
-                }
-                if (dbStationLocs.Count() < StationList.Stations.Count)
-                {
-                    var newStations = StationList.Stations.Where(x => !dbStationLocs.Select(z => z.StationNumber).Contains(x.StationNumber)).ToList();
-                    context.PastWeekStationData.AddRange(newStations);
-                    Logging.Log("GetOutOfDateStations", $"Added {newStations.Count()} Previously Absent Stations And Data To DB");
-                }
-                var outOfDateStationData = dbStationLocs.Where(x => DateOnly.FromDateTime(x.LastUpdate) < DateOnly.FromDateTime(DateTime.Now));
-                var updateCount = 0;
-                foreach (PastWeekStationData station in outOfDateStationData)
-                {
-                    var stationListMatch = StationList.Stations.SingleOrDefault(x => x.StationNumber == station.StationNumber);
-                    if (stationListMatch != null && stationListMatch.LastUpdate > station.LastUpdate)
-                    {
-                        station.PastWeekData = stationListMatch.PastWeekData;
-                        updateCount++;
-                    }
-                }
-                context.SaveChanges();
-                Logging.Log("GetOutOfDateStations", $"Updated {updateCount} Stations And Data In DB");
-                Logging.Log("GetOutOfDateStations", "Success");
+                // TODO: This is naughty... Should probably break this up...
+                _stationCollection.InsertManyAsync(StationList.Stations);
+                Logging.Log("GetOutOfDateStations", "All Downloaded Station Data Inserted Into DB, was previously empty");
+                return;
             }
+            if (collectionCount < StationList.Stations.Count)
+            {
+                // TODO: Need to verify logic works the same...
+                var newStations = StationList.Stations.Where(x => !_stationCollection.AsQueryable().Select(y => y.StationNumber).Contains(x.StationNumber)).ToList();
+                _stationCollection.InsertManyAsync(newStations);
+                //var newStations = StationList.Stations.Where(x => !dbStationLocs.Select(z => z.StationNumber).Contains(x.StationNumber)).ToList();
+                //context.PastWeekStationData.AddRange(newStations);
+                Logging.Log("GetOutOfDateStations", $"Added {newStations.Count()} Previously Absent Stations And Data To DB");
+            }
+            var outOfDateStationData = _stationCollection.AsQueryable().Where(x => DateOnly.FromDateTime(x.LastUpdate) < DateOnly.FromDateTime(DateTime.Now));
+            var updateCount = 0;
+            // TODO: Need to redo this logic to work with MongoDB, and probably break it up to save on memory
+            //foreach (PastWeekStationData station in outOfDateStationData)
+            //{
+            //    var stationListMatch = StationList.Stations.SingleOrDefault(x => x.StationNumber == station.StationNumber);
+            //    if (stationListMatch != null && stationListMatch.LastUpdate > station.LastUpdate)
+            //    {
+            //        station.PastWeekData = stationListMatch.PastWeekData;
+            //        updateCount++;
+            //    }
+            //}
+            //context.SaveChanges();
+            Logging.Log("GetOutOfDateStations", $"Updated {updateCount} Stations And Data In DB");
+            Logging.Log("GetOutOfDateStations", "Success");
         }
         catch (Exception ex)
         {

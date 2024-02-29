@@ -3,7 +3,7 @@
 public static class NoaaArchive
 {
     private static string newestArchiveFileName = "";
-    private static string uncompressedFolderName = "";
+    private static string uncompressedFolderName = "2024";
     public static string NewestArchiveFileName { get => newestArchiveFileName; }
     public static string UncompressedFolderName { get => uncompressedFolderName; }
     public static void SetNewestArchiveFileName(string fileName)
