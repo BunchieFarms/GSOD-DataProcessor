@@ -5,11 +5,16 @@ namespace GSOD_DataProcessor.Shared;
 
 internal static class MongoBase
 {
-    public static IMongoDatabase WeatheredDB;
+    public static IMongoCollection<NoaaArchiveUpdate> NoaaArchUpdateColl;
+    public static IMongoCollection<PastWeekStationData> PastStationDataColl;
 
     public static void SetupMongoBase()
     {
-        WeatheredDB = new MongoClient(AppSettings.WeatheredDbString)
+        IMongoDatabase WeatheredDB = new MongoClient(AppSettings.WeatheredDbString)
                         .GetDatabase(Constants.WeatheredDB);
+
+        NoaaArchUpdateColl = WeatheredDB.GetCollection<NoaaArchiveUpdate>(Constants.NoaaArchiveUpdate);
+
+        PastStationDataColl = WeatheredDB.GetCollection<PastWeekStationData>(Constants.PastWeekStationData);
     }
 }

@@ -9,7 +9,7 @@ public class NoaaSiteParsing
 {
     public static async Task<bool> CheckNoaaSiteIfUpdateAvailable()
     {
-        var _noaaArchiveUpdateCollection = MongoBase.WeatheredDB.GetCollection<NoaaArchiveUpdate>(Constants.NoaaArchiveUpdate);
+        var _noaaArchiveUpdateCollection = MongoBase.NoaaArchUpdateColl;
 
         Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Start");
         var currentYear = DateTime.Now.Year.ToString();
@@ -26,6 +26,7 @@ public class NoaaSiteParsing
             NoaaArchiveUpdate noaaArchiveUpdate = new NoaaArchiveUpdate { FileName = currentYear, LastSiteUpdate = currentYearUpdateDate.LastModified };
             await _noaaArchiveUpdateCollection.InsertOneAsync(noaaArchiveUpdate);
             Logging.Log("CheckNoaaSiteIfUpdateAvailable", "Added New Archive Entry to DB");
+            NoaaArchive.SetNewestArchiveFileName(currentYearUpdateDate.Name!);
             return true;
         }
         if (currentYearUpdateDate.LastModified <= currYearDocument.LastSiteUpdate)

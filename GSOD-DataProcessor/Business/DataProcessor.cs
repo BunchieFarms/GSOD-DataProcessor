@@ -22,8 +22,7 @@ public class DataProcessor
 
         await GetNewestGSOD();
         DecompressGSOD();
-        ParseGSODData();
-        GetOutOfDateStations();
+        await ParseAndProcessGSODData();
         Logging.Log("GSOD Data Processor", "End", true);
     }
 
@@ -69,9 +68,10 @@ public class DataProcessor
         }
     }
 
-    public static void ParseGSODData()
+    // TODO: Improve logging
+    public static async Task ParseAndProcessGSODData()
     {
-        Logging.Log("ParseGSODData", "Start");
+        Logging.Log("ParseAndProcessGSODData", "Start");
         try
         {
             CsvParserOptions csvParserOptions = new CsvParserOptions(true, ',');
@@ -81,73 +81,92 @@ public class DataProcessor
 
             var files = Directory.EnumerateFiles(NoaaArchive.UncompressedFolderName, "*.csv");
 
-            foreach (var file in files)
+            bool isInitialSetup = MongoBase.PastStationDataColl.CountDocuments(Builders<PastWeekStationData>.Filter.Empty) == 0;
+
+            for (var i = 0; i < files.Count(); i++)
             {
                 var result = csvParser
-                    .ReadFromFile(file, Encoding.ASCII)
+                    .ReadFromFile(files.ElementAt(i), Encoding.ASCII)
                     .Where(x => x.IsValid && DateOnly.FromDateTime(x.Result.Date) > startDate)
                     .Select(x => x.Result)
                     .ToList();
 
                 if (result.Count > 0)
-                {
                     StationList.AddToStations(new PastWeekStationData(result));
+
+                // We will just keep 1000 in memory at a time, and insert/update max 1000 at a time.
+                if (StationList.Stations.Count == 1000 || i == files.Count() - 1)
+                {
+                    if (isInitialSetup)
+                        await AddToEmptyCollection();
+                    else
+                        await UpdateCollection();
+
+                    StationList.PurgeStationList();
                 }
             }
             Directory.Delete(NoaaArchive.UncompressedFolderName, true);
-            Logging.Log("ParseGSODData", "Success");
+            Logging.Log("ParseAndProcessGSODData", "Success");
         }
         catch (Exception ex)
         {
-            Logging.Log("ParseGSODData", $"Failure - {ex.Message}");
+            Logging.Log("ParseAndProcessGSODData", $"Failure - {ex.Message}");
             FailureShutdown();
         }
     }
 
-    // TODO: MEMORY HOOOOOG
-    public static void GetOutOfDateStations()
+    // TODO: Improve logging
+    public static async Task AddToEmptyCollection()
     {
-        var _stationCollection = MongoBase.WeatheredDB.GetCollection<PastWeekStationData>(Constants.PastWeekStationData);
-        Logging.Log("GetOutOfDateStations", "Start");
+        Logging.Log("AddToEmptyCollection", "Start");
         try
         {
-            //var dbStationLocs = context.PastWeekStationData;
-            long collectionCount = _stationCollection.CountDocuments(Builders<PastWeekStationData>.Filter.Empty);
-            if (collectionCount == 0)
-            {
-                // TODO: This is naughty... Should probably break this up...
-                _stationCollection.InsertManyAsync(StationList.Stations);
-                Logging.Log("GetOutOfDateStations", "All Downloaded Station Data Inserted Into DB, was previously empty");
-                return;
-            }
-            if (collectionCount < StationList.Stations.Count)
-            {
-                // TODO: Need to verify logic works the same...
-                var newStations = StationList.Stations.Where(x => !_stationCollection.AsQueryable().Select(y => y.StationNumber).Contains(x.StationNumber)).ToList();
-                _stationCollection.InsertManyAsync(newStations);
-                //var newStations = StationList.Stations.Where(x => !dbStationLocs.Select(z => z.StationNumber).Contains(x.StationNumber)).ToList();
-                //context.PastWeekStationData.AddRange(newStations);
-                Logging.Log("GetOutOfDateStations", $"Added {newStations.Count()} Previously Absent Stations And Data To DB");
-            }
-            var outOfDateStationData = _stationCollection.AsQueryable().Where(x => DateOnly.FromDateTime(x.LastUpdate) < DateOnly.FromDateTime(DateTime.Now));
-            var updateCount = 0;
-            // TODO: Need to redo this logic to work with MongoDB, and probably break it up to save on memory
-            //foreach (PastWeekStationData station in outOfDateStationData)
-            //{
-            //    var stationListMatch = StationList.Stations.SingleOrDefault(x => x.StationNumber == station.StationNumber);
-            //    if (stationListMatch != null && stationListMatch.LastUpdate > station.LastUpdate)
-            //    {
-            //        station.PastWeekData = stationListMatch.PastWeekData;
-            //        updateCount++;
-            //    }
-            //}
-            //context.SaveChanges();
-            Logging.Log("GetOutOfDateStations", $"Updated {updateCount} Stations And Data In DB");
-            Logging.Log("GetOutOfDateStations", "Success");
+            await MongoBase.PastStationDataColl.InsertManyAsync(StationList.Stations);
+            Logging.Log("AddToEmptyCollection", $"Successfully added {StationList.Stations.Count} rows to collection.");
+            Logging.Log("AddToEmptyCollection", "Success");
         }
         catch (Exception ex)
         {
-            Logging.Log("GetOutOfDateStations", $"Failure - {ex.Message}");
+            Logging.Log("AddToEmptyCollection", $"Failure - {ex.Message}");
+            FailureShutdown();
+        }
+    }
+
+    // TODO: Improve logging
+    public static async Task UpdateCollection()
+    {
+        Logging.Log("UpdateCollection", "Start");
+        try
+        {
+            var existingStationNumbers = MongoBase.PastStationDataColl.AsQueryable().Select(y => y.StationNumber).ToList();
+            var newStations = StationList.Stations.Where(x => !existingStationNumbers.Contains(x.StationNumber)).ToList();
+            if (newStations.Count > 0)
+            {
+                await MongoBase.PastStationDataColl.InsertManyAsync(newStations);
+                Logging.Log("UpdateCollection", $"Added {newStations.Count} Previously Absent Stations And Data To Collection.");
+            }
+
+            var updateCount = 0;
+            IEnumerable<PastWeekStationData> newStationList = StationList.RemoveNewInsertsFromList(newStations);
+            IEnumerable<PastWeekStationData> dbDocsNeedUpdate = MongoBase.PastStationDataColl.AsQueryable()
+                                                .Where(x => x.LastUpdate < newStationList.First(y => y.StationNumber == x.StationNumber).LastUpdate);
+            if (dbDocsNeedUpdate.Any())
+            {
+                foreach (PastWeekStationData station in dbDocsNeedUpdate)
+                {
+                    // TODO: Make this more efficient. It is killing performance
+                    var stationUpdate = Builders<PastWeekStationData>.Update
+                        .Set(x => x.PastWeekData, newStationList.First(y => y.StationNumber == station.StationNumber).PastWeekData);
+                    await MongoBase.PastStationDataColl.UpdateOneAsync(x => x._id == station._id, stationUpdate);
+                    updateCount++;
+                }
+                Logging.Log("UpdateCollection", $"Updated {updateCount} Stations And Data In DB");
+                Logging.Log("UpdateCollection", "Success");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.Log("UpdateCollection", $"Failure - {ex.Message}");
             FailureShutdown();
         }
     }
