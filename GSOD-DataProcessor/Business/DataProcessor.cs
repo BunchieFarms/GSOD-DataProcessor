@@ -147,22 +147,22 @@ public class DataProcessor
             }
 
             var updateCount = 0;
-            IEnumerable<PastWeekStationData> newStationList = StationList.RemoveNewInsertsFromList(newStations);
-            IEnumerable<PastWeekStationData> dbDocsNeedUpdate = MongoBase.PastStationDataColl.AsQueryable()
-                                                .Where(x => x.LastUpdate < newStationList.First(y => y.StationNumber == x.StationNumber).LastUpdate);
-            if (dbDocsNeedUpdate.Any())
+            Dictionary<string, PastWeekStationData> newStationDict = StationList.RemoveNewInsertsFromList(newStations);
+            var bulkOps = new List<WriteModel<PastWeekStationData>>();
+            foreach (var station in StationList.Stations)
             {
-                foreach (PastWeekStationData station in dbDocsNeedUpdate)
-                {
-                    // TODO: Make this more efficient. It is killing performance
-                    var stationUpdate = Builders<PastWeekStationData>.Update
-                        .Set(x => x.PastWeekData, newStationList.First(y => y.StationNumber == station.StationNumber).PastWeekData);
-                    await MongoBase.PastStationDataColl.UpdateOneAsync(x => x._id == station._id, stationUpdate);
-                    updateCount++;
-                }
-                Logging.Log("UpdateCollection", $"Updated {updateCount} Stations And Data In DB");
-                Logging.Log("UpdateCollection", "Success");
+                var stationFilter = Builders<PastWeekStationData>.Filter.Eq(x => x.StationNumber, station.StationNumber);
+                var stationUpdate = Builders<PastWeekStationData>.Update
+                        .Set(x => x.PastWeekData, newStationDict[station.StationNumber].PastWeekData)
+                        .Set(x => x.LastUpdate, newStationDict[station.StationNumber].LastUpdate);
+                var updateOne = new UpdateOneModel<PastWeekStationData>(stationFilter, stationUpdate) { IsUpsert = true };
+
+                bulkOps.Add(updateOne);
+                updateCount++;
             }
+            await MongoBase.PastStationDataColl.BulkWriteAsync(bulkOps);
+            Logging.Log("UpdateCollection", $"Updated {updateCount} Stations And Data In DB");
+            Logging.Log("UpdateCollection", "Success");
         }
         catch (Exception ex)
         {
