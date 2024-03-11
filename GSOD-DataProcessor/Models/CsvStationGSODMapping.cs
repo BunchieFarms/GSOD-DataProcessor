@@ -1,4 +1,5 @@
 ﻿using TinyCsvParser.Mapping;
+using Weathered_Lib.Models;
 
 namespace GSOD_DataProcessor.Models;
 

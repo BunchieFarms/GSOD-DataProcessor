@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Weathered_Lib.Mongo;
 
 namespace GSOD_DataProcessor.Shared;
 
@@ -12,6 +13,6 @@ public static class AppSettings
     {
         weatheredDbString = config.GetConnectionString("weatheredDbString");
         noaaGsodUri = config.GetConnectionString("noaaGsodUri");
-        MongoBase.SetupMongoBase();
+        MongoBase.SetupMongoBase(weatheredDbString);
     }
 }

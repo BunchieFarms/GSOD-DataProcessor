@@ -1,4 +1,6 @@
-﻿namespace GSOD_DataProcessor.Models;
+﻿using Weathered_Lib.Models;
+
+namespace GSOD_DataProcessor.Models;
 
 public static class StationList
 {

@@ -2,6 +2,8 @@
 using GSOD_DataProcessor.Shared;
 using HtmlAgilityPack;
 using MongoDB.Driver;
+using Weathered_Lib.Models;
+using Weathered_Lib.Mongo;
 
 namespace GSOD_DataProcessor.Business;
 
